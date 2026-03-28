@@ -1,108 +1,245 @@
-# INTR: A Simple Interpretable Transformer for Fine-grained Image Classification and Analysis (ICLR 2024)
+# INTR (ICLR 2024) - Extended Project README
 
-This repo is the official implementation of [INTR: A Simple Interpretable Transformer for Fine-grained Image Classification and Analysis](https://arxiv.org/pdf/2311.04157.pdf). It currently includes code and models for the interpretation of fine-grained data. We will provide a link to the upcoming ICLR 2024 proceedings for this paper when it becomes available online. <br>
+This repository is based on INTR: A Simple Interpretable Transformer for Fine-Grained Image Classification and Analysis and includes additional engineering changes made in this project for practical training, resume, visualization, and single-image demo workflows.
 
+Paper: https://arxiv.org/pdf/2311.04157.pdf
 
-INTR is a novel usage of Transformers to make image classification interpretable. In INTR, we investigate a proactive approach to classification, asking each class to look for itself in an image. We learn class-specific queries (one for each class) as input to the decoder, allowing them to look for their presence in an image via cross-attention.  We show that INTR intrinsically encourages each class to attend distinctly; the cross-attention weights thus provide a meaningful interpretation of the model's prediction. Interestingly, via multi-head cross-attention, INTR could learn to localize different attributes of a class, making it particularly suitable for fine-grained classification and analysis.
+## 1. What This Repository Contains
 
-![Image Description](git_images/architecture.png)
+Core INTR components:
+- Transformer-based interpretable classifier with class queries.
+- Training and evaluation entrypoint via main.py.
+- Attention visualization tools.
 
-In the INTR model, each query in the decoder is responsible for the prediction of a class. So, a query looks at itself to find class-specific features from the feature map. First, we visualize the feature map i.e., the value matrix of the transformer architecture to see the important parts of the object in the image. To find the specific features, where the model pays attention in the value matrix, we show the heatmap of the attention of the model. To avoid external interference in the classification, we use a shared weight vector for classification so therefore the attention weight explains the model's prediction.
+Project extensions added here:
+- K queries per class support (k as hyperparameter).
+- Query aggregation modes (max/mean/sum).
+- Resume-friendly k-query finetuning script.
+- Single image demo script for prediction + heatmap generation.
+- Dataset conversion utility for CUB_200_2011 to ImageFolder format.
+- OOM-safe evaluation controls for quick subset experiments.
 
-![Image Description](git_images/teaser.png)
+## 2. Environment and Dependencies
 
-## Fine-tune models and results
+Recommended runtime:
+- Python 3.8 (64-bit)
+- PyTorch with CUDA support
 
-[INTR](https://huggingface.co/imageomics/INTR) on [DETR-R50](https://github.com/facebookresearch/detr) backbone, classification performance, and fine-tuned models on different datasets.
+Install dependencies:
 
-
-| Dataset | acc@1 | acc@5 | Model |
-|----------|----------|----------|----------|
-| [CUB](https://www.vision.caltech.edu/datasets/cub_200_2011/) | 71.8 | 89.3 |  [checkpoint download](https://huggingface.co/imageomics/INTR/resolve/main/intr_checkpoint_cub_detr_r50.pth)|
-| [Bird](https://www.kaggle.com/datasets/gpiosenka/100-bird-species) | 97.4 | 99.2 |  [checkpoint download](https://huggingface.co/imageomics/INTR/resolve/main/intr_checkpoint_bird_detr_r50.pth)|
-| [Butterfly](https://huggingface.co/datasets/imageomics/Cambridge_butterfly) | 95.0 | 98.3 |  [checkpoint download](https://huggingface.co/imageomics/INTR/resolve/main/intr_checkpoint_butterfly_detr_r50.pth)|
-
-
-
-
-
-## Installation Instructions
-
-Create python environment (optional)
-```sh
-conda create -n intr python=3.8 -y
-conda activate intr
-```
-
-Clone the repository
-```sh
-git clone https://github.com/dipanjyoti/INTR.git
-cd INTR
-```
-
-Install python dependencies
-
-```sh
+```bash
 pip install -r requirements.txt
 ```
 
-## Data Preparation
-Follow the below format for data.
-```
-datasets
-├── dataset_name
-│   ├── train
-│   │   ├── class1
-│   │   │   ├── img1.jpeg
-│   │   │   ├── img2.jpeg
-│   │   │   └── ...
-│   │   ├── class2
-│   │   │   ├── img3.jpeg
-│   │   │   └── ...
-│   │   └── ...
-│   └── val
-│       ├── class1
-│       │   ├── img4.jpeg
-│       │   ├── img5.jpeg
-│       │   └── ...
-│       ├── class2
-│       │   ├── img6.jpeg
-│       │   └── ...
-│       └── ...
+Additional packages used in this project session:
+
+```bash
+pip install opencv-python seaborn scipy packaging
 ```
 
-## INTR Evaluation
-To evaluate the performance of INTR on the _CUB_ dataset, on a multi-GPU (e.g., 4 GPUs) settings, execute the below command. INTR checkpoints are available at Fine-tune model and results.
+## 3. Dataset Layout
 
-```sh
-CUDA_VISIBLE_DEVICES=0,1,2,3 python -m torch.distributed.launch --nproc_per_node=4 --master_port 12345 --use_env main.py --eval --resume <path/to/intr_checkpoint_cub_detr_r50.pth> --dataset_path <path/to/datasets> --dataset_name <dataset_name> 
+Expected dataset layout for training/eval:
+
+```text
+datasets/
+  <dataset_name>/
+    train/
+      class_1/
+      class_2/
+      ...
+    val/
+      class_1/
+      class_2/
+      ...
 ```
-## INTR Interpretation
 
-To generate visual representations of the INTR's interpretations, execute the provided command below. This command will present the interpretation for a specific class with the index <class_number>. By default, it will display interpretations from all attention heads. To focus on interpretations associated with the top queries labeled as top_q as well, set the parameter sim_query_heads to 1. Use a batch size of 1 for the visualization.
+For CUB conversion support, see convert_dataset.py.
 
-```sh
-python -m tools.visualization --eval --resume <path/to/intr_checkpoint_cub_detr_r50.pth> --dataset_path <path/to/datasets> --dataset_name <dataset_name> --class_index <class_number>
+## 4. Repository Structure
+
+```text
+INTR/
+  main.py                        # original train/eval entrypoint
+  engine.py                      # train/eval loops
+  finetune_k_queries.py          # k-query finetuning (resume + quick eval options)
+  demo_single_image.py           # single image inference + heatmap output
+  convert_dataset.py             # CUB metadata -> ImageFolder conversion
+  test_k_queries.py              # sanity checks for k-query behavior
+  demo.ipynb                     # notebook demo
+  models/
+    intr.py                      # INTR model + K-query aggregation
+    backbone.py
+    transformer.py
+    position_encoding.py
+  datasets/
+    build.py                     # ImageFolder + transforms
+    transforms.py
+    constants.py
+  tools/
+    visualization.py             # attention visualization script
+  util/
+    misc.py                      # metrics, class_accuracy, helpers
+  output/                        # generated during experiments (gitignored)
+  checkpoints/                   # model weights (gitignored)
 ```
 
-*Inference time single-image prediction and visualization:* We've also provided a Jupyter Notebook, [demo.ipynb](https://github.com/Imageomics/INTR/blob/main/demo.ipynb), designed for single-image prediction and visualization during the inference process. Please note that the demo is focused on the CUB dataset.
+## 5. Changes Implemented in This Project
 
+### 5.1 K queries per class
 
-## INTR Training
-To prepare INTR for training, use the pretrained model [DETR-R50](https://github.com/facebookresearch/detr). To train for a particular dataset, modify '--num_queries' by setting it to the number of classes in the dataset. Within the INTR architecture, each query in the decoder is assigned the task of capturing class-specific features, which means that every query can be adapted through the learning process. Consequently, the total number of model parameters will grow in proportion to the number of classes in the dataset. To train INTR on a multi-GPU system, (e.g., 4 GPUs), execute the command below.
+Added in main.py, models/intr.py, and tools/visualization.py:
+- --k_queries_per_class
+- --query_aggregation {max, mean, sum}
 
-```sh
-CUDA_VISIBLE_DEVICES=0,1,2,3 python -m torch.distributed.launch --nproc_per_node=4 --master_port 12345 --use_env main.py --finetune <path/to/detr-r50-e632da11.pth> --dataset_path <path/to/datasets> --dataset_name <dataset_name> --num_queries <num_of_classes>
+Behavior:
+- Total queries = num_classes * k_queries_per_class
+- Query logits are reshaped to [batch, num_classes, k]
+- Aggregated class score is used for loss and accuracy
+
+Outputs in model forward now include:
+- query_logits: class-level logits [batch, num_classes]
+- all_query_logits: per-query logits [batch, num_queries]
+- query_logits_per_class: grouped logits [batch, num_classes, k]
+
+### 5.2 Visualization adapted for K-query models
+
+tools/visualization.py now:
+- Selects the most important query within each class group.
+- Supports k-query indexing logic for heatmaps.
+- Includes Windows path compatibility fixes.
+
+### 5.3 Finetuning script with resume and quick-test options
+
+finetune_k_queries.py includes:
+- Initialization from pretrained k=1 checkpoint to k>1 query embeddings.
+- Freeze-all except query_embed and presence_vector.
+- Resume optimizer/scheduler/epoch from checkpoint.
+- Skip redundant pre-finetuning evaluation on resume.
+- CUDA cache clearing before training epochs.
+- Additional quick-test controls:
+  - --eval_batch_size
+  - --max_eval_samples
+  - --max_train_samples
+  - --save_init_checkpoint
+
+### 5.4 Single-image demo workflow
+
+demo_single_image.py supports:
+- Any input image size.
+- INTR preprocessing pipeline.
+- Prediction + top-k class output.
+- Heatmap overlay generation from decoder attention.
+- JSON output for reproducible inference results.
+
+## 6. How to Run
+
+### 6.1 Baseline evaluation
+
+```bash
+python main.py \
+  --eval \
+  --resume checkpoints/intr_checkpoint_cub_detr_r50.pth \
+  --dataset_path datasets \
+  --dataset_name CUB_200_2011_formatted \
+  --batch_size 4
 ```
-## Acknowledgment
-Our model is inspired by the DEtection TRansformer [(DETR)](https://github.com/facebookresearch/detr) method.
 
-We thank the authors of DETR for doing such great work.
+### 6.2 K-query finetuning from pretrained checkpoint
 
-## Bibtext [![Paper](https://img.shields.io/badge/Paper-10.48550%2FarXiv.2311.04157-blue)](https://doi.org/10.48550/arXiv.2311.04157)
-If you find our work helpful for your research, please consider citing the BibTeX entry.
+```bash
+python finetune_k_queries.py \
+  --pretrained checkpoints/intr_checkpoint_cub_detr_r50.pth \
+  --k_queries_per_class 3 \
+  --query_aggregation max \
+  --epochs 4 \
+  --batch_size 4 \
+  --dataset_path datasets \
+  --dataset_name CUB_200_2011_formatted \
+  --output_sub_dir k3_finetune
+```
 
-```sh
+### 6.3 Resume k-query finetuning
+
+```bash
+python finetune_k_queries.py \
+  --resume output/CUB_200_2011_formatted/k3_finetune/checkpoint.pth \
+  --k_queries_per_class 3 \
+  --query_aggregation max \
+  --epochs 4 \
+  --batch_size 4 \
+  --dataset_path datasets \
+  --dataset_name CUB_200_2011_formatted \
+  --output_sub_dir k3_finetune
+```
+
+### 6.4 Quick subset-only eval for k-query initialization
+
+```bash
+python finetune_k_queries.py \
+  --pretrained checkpoints/intr_checkpoint_cub_detr_r50.pth \
+  --k_queries_per_class 7 \
+  --query_aggregation max \
+  --eval \
+  --save_init_checkpoint \
+  --max_eval_samples 800 \
+  --eval_batch_size 1 \
+  --dataset_path datasets \
+  --dataset_name CUB_200_2011_formatted \
+  --output_sub_dir k7_finetune_minitest
+```
+
+### 6.5 Single-image demo with heatmap
+
+```bash
+python demo_single_image.py \
+  --image_path demo_image/Yellow_warbler_(82905).jpg \
+  --checkpoint output/CUB_200_2011_formatted/k3_finetune/checkpoint.pth \
+  --dataset_name CUB_200_2011_formatted \
+  --k_queries_per_class 3 \
+  --query_aggregation max \
+  --output_dir output/demo_single_k3
+```
+
+## 7. Experimental Notes from This Project
+
+Observed metrics on CUB pipeline in this workspace:
+- Baseline checkpoint evaluation: acc1 71.86, acc5 89.39
+- K=3 finetune epoch 0 snapshot: acc1 about 71.70, acc5 about 89.51
+- K=5 subset minitest (800 eval samples): acc1 71.25, acc5 88.62
+- K=7 subset minitest (800 eval samples): acc1 70.50, acc5 88.62
+
+Important practical note:
+- On memory-constrained GPUs, evaluation can fail at large eval settings.
+- Use --eval_batch_size 1 and --max_eval_samples for stable quick checks.
+
+## 8. Novelty in This Extended Version
+
+The main novelty added in this project is moving from one-query-per-class to multi-query-per-class classification with explicit query aggregation and interpretable query selection.
+
+Why this matters:
+- A single class can be represented by multiple learned query prototypes.
+- Different queries can specialize to different visual parts, poses, or context.
+- Aggregation provides a robust class score while retaining per-query interpretability.
+- Visualization can reveal which specific query instance drove the final prediction.
+
+In short, this extension keeps the original INTR interpretability principle but increases representational flexibility per class, making the model more expressive for fine-grained categories.
+
+## 9. Related Documentation in This Repo
+
+- K_QUERIES_PER_CLASS_CHANGES.md
+- QUICK_START_K_QUERIES.md
+- VISUALIZATION_GUIDE.md
+- EVALUATION_RESULTS.md
+
+## 10. Acknowledgment
+
+INTR is inspired by DETR (DEtection TRansformer):
+- https://github.com/facebookresearch/detr
+
+## 11. Citation
+
+```bibtex
 @inproceedings{paul2024simple,
   title={A Simple Interpretable Transformer for Fine-Grained Image Classification and Analysis},
   author={Paul, Dipanjyoti and Chowdhury, Arpita and Xiong, Xinqi and Chang, Feng-Ju and Carlyn, David and Stevens, Samuel and Provost, Kaiya and Karpatne, Anuj and Carstens, Bryan and Rubenstein, Daniel and Stewart, Charles and Berger-Wolf, Tanya and Su, Yu and Chao, Wei-Lun},
