@@ -1,0 +1,82 @@
+# -----------------------------
+# OS / Editor
+# -----------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# -----------------------------
+# Virtual environments
+# -----------------------------
+.venv/
+venv/
+env/
+ENV/
+intr/
+INTR/intr/
+
+# -----------------------------
+# Jupyter
+# -----------------------------
+.ipynb_checkpoints/
+
+# -----------------------------
+# Secrets / local env
+# -----------------------------
+.env
+.env.*
+*.key
+*.pem
+
+# -----------------------------
+# Build / logs / temp
+# -----------------------------
+*.log
+logs/
+tmp/
+temp/
+
+# -----------------------------
+# ML artifacts (large files)
+# -----------------------------
+*.pth
+*.pt
+*.ckpt
+*.onnx
+*.h5
+*.npz
+*.npy
+
+# -----------------------------
+# Project-specific generated data
+# -----------------------------
+INTR/output/
+INTR/checkpoints/
+INTR/datasets/*/
+INTR/git_images/
+
+# Keep package marker files if present
+!INTR/datasets/__init__.py
+!INTR/datasets/*.py
