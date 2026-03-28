@@ -34,7 +34,6 @@ htmlcov/
 venv/
 env/
 ENV/
-intr/
 INTR/intr/
 
 # -----------------------------
